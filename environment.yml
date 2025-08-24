@@ -1,0 +1,18 @@
+name: StreamViz
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11.11
+  - pip
+  - pytest
+  # Zarr and Dask stack
+  - zarr==2.13.3
+  - xarray==2024.3.0
+  - numpy==1.26.4
+  - scikit-learn==1.6.1
+  - pandas==2.2.3
+  - tqdm==4.67.1
+  - joblib==1.4.2
+  - lightgbm==4.6.0
+  - distributed==2025.1.0
+  - dask==2025.1.0
