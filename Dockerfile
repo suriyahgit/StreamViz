@@ -1,64 +1,75 @@
-# Use micromamba base image
 FROM mambaorg/micromamba:latest
 
 USER root
+ENV MAMBA_DOCKERFILE_ACTIVATE=1 MAMBA_ROOT_PREFIX=/opt/conda
 
-# Set environment variables for micromamba
-ENV MAMBA_DOCKERFILE_ACTIVATE=1 \
-    MAMBA_ROOT_PREFIX=/opt/conda \
-    PATH=/opt/conda/bin:$PATH
+RUN apt-get update && apt-get install -y \
+    git curl netcat-openbsd ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install git and openssh-client (required for SSH)
-RUN apt-get update && apt-get install -y git
-
-# Create working directory and fix permissions
 WORKDIR /app
 RUN chown -R mambauser:mambauser /app
-
-# Create a dedicated test directory with proper permissions
-RUN mkdir -p /app/test_data && \
-    chown -R mambauser:mambauser /app/test_data
-
 USER mambauser
 
-# Copy environment file
-COPY environment.yml .
-COPY test_requirements.txt .
-COPY test_era5.py .
+COPY --chown=mambauser:mambauser environment.yml .
+COPY --chown=mambauser:mambauser test_requirements.txt .
 
 RUN micromamba env create -f environment.yml && \
     micromamba clean --all --yes
 
-ENV PATH=/opt/conda/envs/openEO_downScaleML/bin:$PATH
+ENV PATH=/opt/conda/envs/StreamViz/bin:$PATH
 
-# Install downScaleML from the specified branch
-RUN git clone https://github.com/interTwin-eu/downScaleML.git && \
-    cd downScaleML && \
-    git checkout openEO_downScaleML && \
-    pip install .
-
-# Install raster2stac from the test_cube branch
+# Optional: raster2stac install (if you use it)
 RUN git clone https://gitlab.inf.unibz.it/earth_observation_public/raster-to-stac.git && \
     cd raster-to-stac && \
     git checkout chunk_auto_bug && \
     pip install .
 
-RUN git clone https://github.com/interTwin-eu/openeo-processes-dask.git && \
-    cd openeo-processes-dask && \
-    git checkout process/r2s && \
-    git submodule set-url openeo_processes_dask/specs/openeo-processes https://github.com/interTwin-eu/openeo-processes.git && \
-    git submodule update --init && \
-    cd openeo_processes_dask/specs/openeo-processes && \
-    git checkout downScaleML_processes && \
-    cd ../../.. && \
-    pip install .[implementations]
+RUN pip install -r test_requirements.txt && pip install s3fs requests
 
-RUN pip install -r test_requirements.txt
 
-RUN pip install s3fs
+RUN pip install \
+  stac-fastapi.api==6.0.0 \
+  stac-fastapi.extensions==6.0.0 \
+  stac-fastapi.types==6.0.0 \
+  stac-fastapi.pgstac==6.0.0 \
+  fastapi>=0.104.0 \
+  uvicorn>=0.24.0 \
+  asyncpg>=0.28.0 \
+  pypgstac
 
-# Copy test files
-#COPY tests/ /app/tests/
 
-# Default command
+# --- STAC FastAPI (updated working combination) ---
+#RUN pip install \
+#    stac-fastapi.api==2.4.13 \
+#    stac-fastapi.extensions==2.4.13 \
+#    stac-fastapi.pgstac==2.4.13 \
+#    stac-fastapi.types==2.4.13 \
+#    fastapi>=0.104.0,<0.105.0 \
+#    uvicorn>=0.24.0 \
+#    psycopg[binary]>=3.1.10 \
+#    pgstac==0.7.9
+
+# Alternative: If you prefer the newer asyncpg-based version
+#RUN pip install \
+#    stac-fastapi.api==2.5.0 \
+#    stac-fastapi.extensions==2.5.0 \
+#    stac-fastapi.pgstac==2.5.0 \
+#    stac-fastapi.types==2.5.0 \
+#    fastapi>=0.104.0 \
+#    uvicorn>=0.24.0 \
+#    asyncpg>=0.28.0 \
+#    pgstac==0.9.8
+
+ENV STAC_API_PORT=8081 \
+    POSTGRES_HOST=db \
+    POSTGRES_PORT=5432 \
+    POSTGRES_DB=stac \
+    POSTGRES_USER=stac \
+    POSTGRES_PASSWORD=stac
+
+COPY --chown=mambauser:mambauser start-stac.sh /usr/local/bin/start-stac.sh
+RUN chmod +x /usr/local/bin/start-stac.sh
+
+EXPOSE 8081
 CMD ["bash"]
