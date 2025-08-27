@@ -4,6 +4,7 @@ from typing import Dict, Tuple
 from dash import Dash, dcc, html, Input, Output, callback
 import plotly.graph_objects as go
 from plotly.io import from_json
+import numpy as np
 
 DUMP_DIR = os.environ.get("PLOT_DUMP_DIR", "/srv/plot_dump")
 
@@ -61,51 +62,79 @@ def _tighten_colorbars(fig: go.Figure):
             # Update the trace
             tr.update(colorbar=cb)
 
-def _debug_figure_layout(fig, name):
-    print(f"\n=== DEBUG: {name} ===")
-    print(f"Has frames: {hasattr(fig, 'frames') and bool(fig.frames)}")
-    print(f"Has sliders: {hasattr(fig.layout, 'sliders') and bool(fig.layout.sliders)}")
-    print(f"Has updatemenus: {hasattr(fig.layout, 'updatemenus') and bool(fig.layout.updatemenus)}")
-    if hasattr(fig.layout, 'sliders') and fig.layout.sliders:
-        print(f"Slider config: {fig.layout.sliders[0]}")
-    print("====================\n")
-
 def _anchor_geo(fig: go.Figure, name: str):
-    # Debug: see what we're working with
-    _debug_figure_layout(fig, f"Before processing {name}")
+    # Check if this is an animated figure (has frames)
+    has_animation = hasattr(fig, 'frames') and fig.frames
     
-    # Store original animation controls
-    original_sliders = getattr(fig.layout, 'sliders', None)
-    original_updatemenus = getattr(fig.layout, 'updatemenus', None)
-    original_frames = getattr(fig, 'frames', None)
+    # Use your BBOX values directly
+    x_range = [5.0, 32.0]   # lon_min, lon_max
+    y_range = [47.0, 71.5]  # lat_min, lat_max
     
-    # Apply your layout changes
-    fig.update_layout(
-        uirevision=f"keep:{name}",
-        autosize=True,
-        margin=dict(l=10, r=10, t=48, b=10),
-        xaxis=dict(constrain="domain", zeroline=False,
-                   showgrid=True, gridcolor="rgba(0,0,0,0.08)",
-                   ticks="outside", ticklen=4, ticksuffix="°E"),
-        yaxis=dict(scaleanchor="x", scaleratio=1.0, zeroline=False,
-                   showgrid=True, gridcolor="rgba(0,0,0,0.08)",
-                   ticks="outside", ticklen=4, ticksuffix="°N"),
-        dragmode="pan", hovermode="closest",
-        transition=dict(duration=0)
-    )
-    
-    # Restore animation controls if they existed
-    if original_sliders:
-        fig.update_layout(sliders=original_sliders)
-    if original_updatemenus:
-        fig.update_layout(updatemenus=original_updatemenus)
-    if original_frames:
-        fig.frames = original_frames
+    if not has_animation:
+        # Apply layout changes only to non-animated figures
+        fig.update_layout(
+            uirevision=f"keep:{name}",
+            autosize=True,
+            margin=dict(l=10, r=10, t=48, b=10),
+            xaxis=dict(
+                range=x_range,
+                constrain="domain", 
+                zeroline=False,
+                showgrid=True, 
+                gridcolor="rgba(0,0,0,0.08)",
+                ticks="outside", 
+                ticklen=4, 
+                ticksuffix="°E"
+            ),
+            yaxis=dict(
+                range=y_range,
+                scaleanchor="x", 
+                scaleratio=1.0, 
+                zeroline=False,
+                showgrid=True, 
+                gridcolor="rgba(0,0,0,0.08)",
+                ticks="outside", 
+                ticklen=4, 
+                ticksuffix="°N"
+            ),
+            dragmode="pan", 
+            hovermode="closest",
+            transition=dict(duration=0)
+        )
+    else:
+        # For animated figures, use fixed height and maintain aspect ratio
+        fig.update_layout(
+            uirevision=f"keep:{name}",
+            autosize=False,
+            width=None,
+            height=650,
+            margin=dict(l=10, r=10, t=48, b=80),
+            xaxis=dict(
+                range=x_range,
+                constrain="domain", 
+                zeroline=False,
+                showgrid=True, 
+                gridcolor="rgba(0,0,0,0.08)",
+                ticks="outside", 
+                ticklen=4, 
+                ticksuffix="°E",
+                scaleanchor="y",
+                scaleratio=1.0
+            ),
+            yaxis=dict(
+                range=y_range,
+                zeroline=False,
+                showgrid=True, 
+                gridcolor="rgba(0,0,0,0.08)",
+                ticks="outside", 
+                ticklen=4, 
+                ticksuffix="°N"
+            ),
+            dragmode="pan",
+            hovermode="closest"
+        )
     
     _tighten_colorbars(fig)
-    
-    # Debug: see the result
-    _debug_figure_layout(fig, f"After processing {name}")
 
 app.layout = html.Div([
     dcc.Interval(id="poll", interval=120000, n_intervals=0),  # 2 minutes

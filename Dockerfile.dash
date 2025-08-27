@@ -10,7 +10,8 @@ RUN pip install --no-cache-dir \
     dash-bootstrap-components==1.7.0 \
     plotly==6.3.0 \
     gunicorn==21.2.0 \
-    Flask-Compress==1.15 
+    Flask-Compress==1.15 \
+    numpy
 
 WORKDIR /app
 COPY dash_app.py /app/dash_app.py

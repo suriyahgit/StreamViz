@@ -297,19 +297,8 @@ def save_slider_plot(frames, title, filename, initial_data):
                 "currentvalue": {"prefix": "Time: ", "font": {"size": 12}, "xanchor": "center"},
                 "pad": {"t": 50, "b": 10}
             }],
-            updatemenus=[{
-                "type": "buttons",
-                "buttons": [
-                    {"label": "▶", "method": "animate",
-                     "args": [None, {"frame": {"duration": 500}, "fromcurrent": True, "transition": {"duration": 0}}]},
-                    {"label": "⏸", "method": "animate",
-                     "args": [[None], {"frame": {"duration": 0}, "mode": "immediate"}]},
-                ],
-                "showactive": False,
-                "x": 0.1, "y": 0,
-                "xanchor": "right", "yanchor": "top",
-                "pad": {"r": 10, "t": 10}
-            }]
+            # REMOVE the updatemenus (play/pause buttons) entirely
+            updatemenus=[]  # Empty list removes the buttons
         ),
         frames=frames
     )
