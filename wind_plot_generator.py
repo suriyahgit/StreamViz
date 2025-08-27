@@ -450,6 +450,58 @@ def build_frames_shear(u_hi, v_hi, u_lo, v_lo, title, filename,
 
     save_slider_plot(frames, title, filename, initial_data)
 
+def build_frames_scalar_with_quivers(
+    title, filename, scalar_da, qu_u, qu_v,
+    colorscale, z_unit, zmin, zmax,
+    max_arrows=600, min_speed=None,
+    shaft_len_cell=0.40, head_len_frac=0.35, head_angle_deg=25.0, line_width=1.0
+):
+    times = (scalar_da.step.values + scalar_da.time.values).astype("datetime64[m]")
+
+    # t0
+    z0 = scalar_da.isel(step=0).metpy.convert_units("m/s").values.astype(np.float32)
+    z0_m, lon_m, lat_m = ensure_xy_monotonic(z0, lon_raw, lat_raw)
+    heat0 = _heatmap_from_z(z0_m, lon_m, lat_m, colorscale, zmin, zmax, z_unit)
+
+    qu_u0 = qu_u.isel(step=0).metpy.convert_units("m/s").values
+    qu_v0 = qu_v.isel(step=0).metpy.convert_units("m/s").values
+    qu_u0_m, _, _ = ensure_xy_monotonic(qu_u0, lon_raw, lat_raw)
+    qu_v0_m, _, _ = ensure_xy_monotonic(qu_v0, lon_raw, lat_raw)
+
+    tmp0 = go.Figure(data=[heat0])
+    add_vectors_svg_arrows(
+        tmp0, qu_u0_m, qu_v0_m, lat_m, lon_m,
+        max_arrows=max_arrows, min_speed=min_speed,
+        shaft_len_cell=shaft_len_cell, head_len_frac=head_len_frac,
+        head_angle_deg=head_angle_deg, line_width=line_width, name="Wind"
+    )
+    initial_data = [tmp0.data[0]] + STATIC_OVERLAYS + list(tmp0.data[1:])
+
+    frames = []
+    for ti, t in enumerate(times):
+        z = scalar_da.isel(step=ti).metpy.convert_units("m/s").values.astype(np.float32)
+        z_m, lon_m, lat_m = ensure_xy_monotonic(z, lon_raw, lat_raw)
+        heat = _heatmap_from_z(z_m, lon_m, lat_m, colorscale, zmin, zmax, z_unit)
+
+        qu_u_i = qu_u.isel(step=ti).metpy.convert_units("m/s").values
+        qu_v_i = qu_v.isel(step=ti).metpy.convert_units("m/s").values
+        qu_u_i_m, _, _ = ensure_xy_monotonic(qu_u_i, lon_raw, lat_raw)
+        qu_v_i_m, _, _ = ensure_xy_monotonic(qu_v_i, lon_raw, lat_raw)
+
+        tmp = go.Figure(data=[heat])
+        add_vectors_svg_arrows(
+            tmp, qu_u_i_m, qu_v_i_m, lat_m, lon_m,
+            max_arrows=max_arrows, min_speed=min_speed,
+            shaft_len_cell=shaft_len_cell, head_len_frac=head_len_frac,
+            head_angle_deg=head_angle_deg, line_width=line_width, name="Wind"
+        )
+        frame_data = [tmp.data[0]] + STATIC_OVERLAYS + list(tmp.data[1:])
+        time_str = np.datetime_as_string(t, unit="m") + "Z"
+        frames.append(go.Frame(data=frame_data, name=time_str))
+
+    save_slider_plot(frames, title, filename, initial_data)
+
+
 # ─────────────────────────────────────────────────────────────
 # 6. CREATE JSONs
 # ─────────────────────────────────────────────────────────────
@@ -505,3 +557,13 @@ build_frames_speed_plus_vectors(
     line_width=1.1,
     add_mslp=None
 )
+
+build_frames_scalar_with_quivers(
+    title="10 m Wind Gust + 10 m vectors (IFS)",
+    filename="10m_gust_vec",
+    scalar_da=gust, qu_u=u10, qu_v=v10,
+    colorscale="Turbo", z_unit="m/s", zmin=0, zmax=40,
+    max_arrows=400, min_speed=3.0,
+    shaft_len_cell=0.42, head_len_frac=0.35, head_angle_deg=25.0, line_width=0.9
+)
+
