@@ -1,4 +1,4 @@
-import os, glob, json, time
+import os, glob
 from pathlib import Path
 from typing import Dict, Tuple
 from dash import Dash, dcc, html, Input, Output, callback
@@ -10,126 +10,122 @@ DUMP_DIR = os.environ.get("PLOT_DUMP_DIR", "/srv/plot_dump")
 app = Dash(__name__, title="Plot Gallery")
 server = app.server
 
-# Enable gzip responses
 try:
     from flask_compress import Compress
     Compress(server)
 except Exception:
     pass
 
-# ─────────────────────────────────────────────────────────────
-# Simple file cache (reload only when mtime changes)
-# ─────────────────────────────────────────────────────────────
-_CACHE: Dict[str, Tuple[float, go.Figure]] = {}  # {name: (mtime, figure)}
-
-def _safe_from_json(text: str) -> go.Figure:
-    # plotly.io.from_json is already optimal; keep validation off in your producer
-    return from_json(text)
-
-def _load_one(fp: str):
-    name = Path(fp).stem
-    try:
-        mtime = os.path.getmtime(fp)
-        cached = _CACHE.get(name)
-        if cached and cached[0] == mtime:
-            return name, cached[1]
-        with open(fp, "r") as f:
-            fig = _safe_from_json(f.read())
-        _CACHE[name] = (mtime, fig)
-        return name, fig
-    except Exception as e:
-        print(f"⚠️ failed to load {fp}: {e}")
-        return None
+_CACHE: Dict[str, Tuple[float, go.Figure]] = {}
 
 def load_figs():
     figs = {}
     for fp in sorted(glob.glob(os.path.join(DUMP_DIR, "*.json"))):
-        loaded = _load_one(fp)
-        if loaded:
-            name, fig = loaded
+        name = Path(fp).stem
+        try:
+            mtime = os.path.getmtime(fp)
+            cached = _CACHE.get(name)
+            if cached and cached[0] == mtime:
+                figs[name] = cached[1]
+                continue
+            with open(fp, "r") as f:
+                fig = from_json(f.read())
+            _CACHE[name] = (mtime, fig)
             figs[name] = fig
+        except Exception as e:
+            print(f"⚠️ failed to load {fp}: {e}")
     return figs
 
-# ─────────────────────────────────────────────────────────────
-# Post-load layout tweaks (no heavy modifications!)
-# ─────────────────────────────────────────────────────────────
-def _guess_xy_ranges(fig: go.Figure):
-    """If ranges are missing, try to infer from first frame/trace with x/y arrays."""
-    def read_xy(data_list):
-        for tr in data_list:
-            x = getattr(tr, "x", None)
-            y = getattr(tr, "y", None)
-            if x is not None and y is not None and len(x) and len(y):
-                try:
-                    xmin, xmax = float(min(x)), float(max(x))
-                    ymin, ymax = float(min(y)), float(max(y))
-                    return [xmin, xmax], [ymin, ymax]
-                except Exception:
-                    continue
-        return None, None
+def _tighten_colorbars(fig: go.Figure):
+    for tr in fig.data:
+        t = (getattr(tr, "type", "") or "").lower()
+        if t in ("heatmap", "heatmapgl", "surface", "contour"):
+            # Get the colorbar dict or create a new one
+            cb = getattr(tr, "colorbar", None)
+            if cb is None:
+                cb = {}
+            else:
+                # Make sure we're working with a dictionary, not a ColorBar object
+                if hasattr(cb, "to_plotly_json"):
+                    cb = cb.to_plotly_json()
+                # Ensure it's a dict
+                cb = dict(cb) if isinstance(cb, dict) else {}
+            
+            # Set default values
+            cb.setdefault("x", 1.01)
+            cb.setdefault("xpad", 6)
+            cb.setdefault("thickness", 12)
+            cb.setdefault("len", 0.90)
+            cb.setdefault("y", 0.5)
+            
+            # Update the trace
+            tr.update(colorbar=cb)
 
-    xr, yr = read_xy(fig.data)
-    if xr is None or yr is None:
-        # Fallback: first frame
-        frames = getattr(fig, "frames", []) or []
-        if frames:
-            xr, yr = read_xy(frames[0].data)
-    return xr, yr
+def _debug_figure_layout(fig, name):
+    print(f"\n=== DEBUG: {name} ===")
+    print(f"Has frames: {hasattr(fig, 'frames') and bool(fig.frames)}")
+    print(f"Has sliders: {hasattr(fig.layout, 'sliders') and bool(fig.layout.sliders)}")
+    print(f"Has updatemenus: {hasattr(fig.layout, 'updatemenus') and bool(fig.layout.updatemenus)}")
+    if hasattr(fig.layout, 'sliders') and fig.layout.sliders:
+        print(f"Slider config: {fig.layout.sliders[0]}")
+    print("====================\n")
 
-def tune_layout_for_geo(fig: go.Figure, name: str) -> go.Figure:
-    # Preserve user state per tab
-    fig.update_layout(uirevision=f"keep:{name}", autosize=True)
-
-    # Axis aspect (no horizontal elongation): y anchored to x, 1:1 in degrees
+def _anchor_geo(fig: go.Figure, name: str):
+    # Debug: see what we're working with
+    _debug_figure_layout(fig, f"Before processing {name}")
+    
+    # Store original animation controls
+    original_sliders = getattr(fig.layout, 'sliders', None)
+    original_updatemenus = getattr(fig.layout, 'updatemenus', None)
+    original_frames = getattr(fig, 'frames', None)
+    
+    # Apply your layout changes
     fig.update_layout(
-        xaxis=dict(
-            constrain="domain",
-            zeroline=False, showgrid=True, gridcolor="rgba(0,0,0,0.1)",
-            ticks="outside", ticklen=4, ticksuffix="°E"
-        ),
-        yaxis=dict(
-            constrain="domain",
-            scaleanchor="x", scaleratio=1.0,
-            zeroline=False, showgrid=True, gridcolor="rgba(0,0,0,0.1)",
-            ticks="outside", ticklen=4, ticksuffix="°N"
-        ),
+        uirevision=f"keep:{name}",
+        autosize=True,
         margin=dict(l=10, r=10, t=48, b=10),
-        dragmode="pan",
-        hovermode="closest",
+        xaxis=dict(constrain="domain", zeroline=False,
+                   showgrid=True, gridcolor="rgba(0,0,0,0.08)",
+                   ticks="outside", ticklen=4, ticksuffix="°E"),
+        yaxis=dict(scaleanchor="x", scaleratio=1.0, zeroline=False,
+                   showgrid=True, gridcolor="rgba(0,0,0,0.08)",
+                   ticks="outside", ticklen=4, ticksuffix="°N"),
+        dragmode="pan", hovermode="closest",
         transition=dict(duration=0)
     )
+    
+    # Restore animation controls if they existed
+    if original_sliders:
+        fig.update_layout(sliders=original_sliders)
+    if original_updatemenus:
+        fig.update_layout(updatemenus=original_updatemenus)
+    if original_frames:
+        fig.frames = original_frames
+    
+    _tighten_colorbars(fig)
+    
+    # Debug: see the result
+    _debug_figure_layout(fig, f"After processing {name}")
 
-    # If producer didn't set ranges, infer from data to remove top/bottom whitespace
-    xr, yr = _guess_xy_ranges(fig)
-    if xr and yr:
-        fig.update_xaxes(range=xr)
-        fig.update_yaxes(range=yr)
-
-    # Don’t re-touch frames; they’re already optimized WebGL from producer
-    return fig
-
-# ─────────────────────────────────────────────────────────────
-# Layout
-# ─────────────────────────────────────────────────────────────
 app.layout = html.Div([
-    dcc.Interval(id="poll", interval=60000, n_intervals=0),   # poll every 60s
-    dcc.Tabs(id="tabs", value=None),
+    dcc.Interval(id="poll", interval=120000, n_intervals=0),  # 2 minutes
+    dcc.Tabs(
+        id="tabs", value=None,
+        style={"height":"38px"},
+        children=[],
+        parent_style={"marginBottom":"4px"},
+        className="tabs"
+    ),
     dcc.Loading(
         dcc.Graph(
             id="graph",
-            config={
-                "responsive": True,
-                "scrollZoom": True,
-                "doubleClick": "reset"
-            },
+            config={"responsive": True, "scrollZoom": True, "doubleClick": "reset"},
             style={"flex": "1 1 auto", "height": "100%"}
-        ), type="default"
+        ),
+        type="default"
     ),
 ], style={"height": "100vh", "display": "flex", "flexDirection": "column"})
 
-# ─────────────────────────────────────────────────────────────
-# Tabs = one per figure file (1 fig = all timesteps)
-# ─────────────────────────────────────────────────────────────
 @callback(
     Output("tabs", "children"),
     Output("tabs", "value"),
@@ -138,14 +134,13 @@ app.layout = html.Div([
 def update_tabs(_):
     figs = load_figs()
     if not figs:
-        return [dcc.Tab(label="No figures yet", value="none")], "none"
+        return [dcc.Tab(label="No figures yet", value="none",
+                        style={"padding":"4px 10px", "fontSize":"12px"})], "none"
     names = sorted(figs.keys())
-    tabs = [dcc.Tab(label=name, value=name) for name in names]
+    tabs = [dcc.Tab(label=n, value=n,
+                    style={"padding":"4px 10px", "fontSize":"12px"}) for n in names]
     return tabs, names[0]
 
-# ─────────────────────────────────────────────────────────────
-# Render the selected tab, apply geo tuning
-# ─────────────────────────────────────────────────────────────
 @callback(
     Output("graph", "figure"),
     Input("tabs", "value"),
@@ -156,12 +151,9 @@ def render_tab(tab_name, _):
     if not figs or tab_name not in figs:
         return go.Figure(layout_title_text="No figures found")
     fig = figs[tab_name]
-    fig = tune_layout_for_geo(fig, tab_name)
+    _anchor_geo(fig, tab_name)  # ensures consistent aspect/spacing
     return fig
 
-# ─────────────────────────────────────────────────────────────
-# Health check
-# ─────────────────────────────────────────────────────────────
 @server.get("/healthz")
 def healthz():
     return {"ok": True}
