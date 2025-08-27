@@ -71,6 +71,32 @@ reset-db: down
 	fi
 	$(MAKE) up-detached
 
+.PHONY: dash-up dash-down dash-logs dash-restart dash-open
+dash-up:
+	$(COMPOSE) up -d dash
+
+dash-down:
+	$(COMPOSE) rm -sf dash
+
+dash-logs:
+	$(COMPOSE) logs -f dash
+
+dash-restart:
+	$(MAKE) dash-down
+	$(MAKE) dash-up
+
+dash-open:
+	@echo "Open: http://localhost:$(shell grep DASH_PORT $(ENV_FILE) | cut -d '=' -f2)"
+
+.PHONY: dash-logs
+dash-logs:
+	docker logs -f plot-dash
+
+.PHONY: services
+services:
+	docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+
+
 
 
 # make up           # Run stack interactively
@@ -81,3 +107,11 @@ reset-db: down
 # make rebuild      # Rebuild everything from scratch
 # make reset-db     # Delete volumes and restart clean
 # make curl         # Hit http://localhost:8081 and print JSON
+
+
+# make build        # build (adds the dash image)
+# make up-detached  # bring the stack up (including your existing services)
+# make dash-up      # or just start Dash if the rest is already running
+# make dash-open    # open the UI
+# -> http://localhost:8050
+

@@ -53,6 +53,26 @@ services:
     volumes:
       - .:/app
 
+  dash:
+    build:
+      context: .
+      dockerfile: Dockerfile.dash
+    container_name: plot-dash
+    environment:
+      PLOT_DUMP_DIR: ${PLOT_DUMP_DIR_CONT}
+    volumes:
+      - ${PLOT_DUMP_DIR_HOST}:${PLOT_DUMP_DIR_CONT}:rw
+    ports:
+      - "${DASH_PORT}:8050"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8050/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+
+
 networks:
   default:
     name: stacnet
