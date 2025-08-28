@@ -16,3 +16,8 @@ dependencies:
   - lightgbm==4.6.0
   - distributed==2025.1.0
   - dask==2025.1.0
+  - plotly
+  - ipykernel
+  - metpy
+pip:
+  - raster2stac
