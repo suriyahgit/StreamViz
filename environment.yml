@@ -19,5 +19,8 @@ dependencies:
   - plotly
   - ipykernel
   - metpy
-pip:
-  - raster2stac
+  - pip:
+      - ecmwf-opendata
+      - cfgrib
+      - ipython
+      - s3fs

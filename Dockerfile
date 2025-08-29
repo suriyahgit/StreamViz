@@ -19,14 +19,7 @@ RUN micromamba env create -f environment.yml && \
 
 ENV PATH=/opt/conda/envs/StreamViz/bin:$PATH
 
-# Optional: raster2stac install (if you use it)
-RUN git clone https://gitlab.inf.unibz.it/earth_observation_public/raster-to-stac.git && \
-    cd raster-to-stac && \
-    git checkout chunk_auto_bug && \
-    pip install .
-
 RUN pip install -r test_requirements.txt && pip install s3fs requests
-
 
 RUN pip install \
   stac-fastapi.api==6.0.0 \
@@ -37,6 +30,7 @@ RUN pip install \
   uvicorn>=0.24.0 \
   asyncpg>=0.28.0 \
   pypgstac
+
 
 
 # --- STAC FastAPI (updated working combination) ---

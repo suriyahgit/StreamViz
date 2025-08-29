@@ -39,6 +39,9 @@ services:
       PGUSER: ${POSTGRES_USER}
       PGPASSWORD: ${POSTGRES_PASSWORD}
 
+      ENABLE_TRANSACTIONS_EXTENSIONS: "true"
+      
+
     command: ["/usr/local/bin/start-stac.sh"]
     ports:
       - "${STAC_API_PORT}:8081"
