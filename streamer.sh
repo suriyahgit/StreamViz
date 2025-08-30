@@ -9,7 +9,8 @@ ENV_PY="/home/sdhinakaran/micromamba/envs/StreamViz/bin/python"
 JOB_PATHS=(
   "/home/sdhinakaran/task/StreamViz/streamer/ecmwf_single_worker.py"
   "/home/sdhinakaran/task/StreamViz/streamer/ecmwf_pressure_worker.py" 
-  "/home/sdhinakaran/task/StreamViz/streamer/meps_stream.py"
+  "/home/sdhinakaran/task/StreamViz/streamer/meps_single_worker.py"
+  "/home/sdhinakaran/task/StreamViz/streamer/meps_pressure_worker.py"
 )
 
 #JOB_PATHS=(
