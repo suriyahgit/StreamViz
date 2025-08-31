@@ -35,7 +35,7 @@ vars_needed_pl = [
 ]
 
 ds = xr.open_dataset(url, chunks={"time": 4})[vars_needed_pl]
-ds = ds.isel(time=slice(0, 48))
+ds = ds.isel(time=slice(0, 24))
 ds = ds.sel(pressure=["925", "850", "700", "500", "250"])
 
 logger.info("Dataset loaded and filtered")
@@ -121,13 +121,6 @@ rs2stac = Raster2STAC(
     providers=[task_SkyFora],
     s3_upload=False,
 ).generate_zarr_stac(item_id=f"MEPS_DET_PRESSURE_{ymd}T{TIME}Z")
-
-with open(f"{output_folder}/MEPS_DET_PRESSURE_2_5KMS.json","r") as f:
-   stac_collection_to_post = json.load(f)
-
-stac_collection_to_post['extent']['temporal']['interval'][0][1] = None
-
-requests.delete("http://localhost:8081/collections/MEPS_DET_PRESSURE_2_5KMS")
 
 # Post STAC items
 logger.info("Posting STAC items to server")

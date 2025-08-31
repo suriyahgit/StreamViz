@@ -48,32 +48,32 @@ height4_vars = ["cloud_base_altitude_z"]
 # Load and process each variable group
 logger.info("Loading height0 variables")
 ds = xr.open_dataset(url)[height0_vars]
-ds = ds.isel(time=slice(0, 48), height0=0)
+ds = ds.isel(time=slice(0, 24), height0=0)
 store_1 = ds.load()
 
 logger.info("Loading height7 variables")
 store_2 = xr.open_dataset(url)[height7_vars]
-store_2 = store_2.isel(time=slice(0, 48), height7=0)
+store_2 = store_2.isel(time=slice(0, 24), height7=0)
 store_2 = store_2.load()
 
 logger.info("Loading surface variables")
 store_3 = xr.open_dataset(url)[surface_vars]
-store_3 = store_3.isel(time=slice(0, 48), surface=0)
+store_3 = store_3.isel(time=slice(0, 24), surface=0)
 store_3 = store_3.load()
 
 logger.info("Loading height1 variables")
 var1 = xr.open_dataset(url)[height1_vars]
-var1 = var1.isel(time=slice(0, 48), height1=0)
+var1 = var1.isel(time=slice(0, 24), height1=0)
 var1 = var1.load()
 
 logger.info("Loading height_above_msl variables")
 var2 = xr.open_dataset(url)[height_above_msl_vars]
-var2 = var2.isel(time=slice(0, 48), height_above_msl=0)
+var2 = var2.isel(time=slice(0, 24), height_above_msl=0)
 var2 = var2.load()
 
 logger.info("Loading height4 variables")
 var3 = xr.open_dataset(url)[height4_vars]
-var3 = var3.isel(time=slice(0, 48), height4=0)
+var3 = var3.isel(time=slice(0, 24), height4=0)
 var3 = var3.load()
 
 # Merge all datasets
@@ -148,13 +148,6 @@ rs2stac = Raster2STAC(
     providers=[task_SkyFora],
     s3_upload=False,
 ).generate_zarr_stac(item_id=f"MEPS_DET_SINGLE_{ymd}T{TIME}Z")
-
-with open(f"{output_folder}/MEPS_DET_SINGLE_2_5KMS.json","r") as f:
-   stac_collection_to_post = json.load(f)
-
-stac_collection_to_post['extent']['temporal']['interval'][0][1] = None
-
-requests.delete("http://localhost:8081/collections/MEPS_DET_SINGLE_2_5KMS")
 
 # Post STAC items
 logger.info("Posting STAC items to server")
