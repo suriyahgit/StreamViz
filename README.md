@@ -1,5 +1,5 @@
-```markdown
 # StreamViz 🌍📡
+
 
 **StreamViz** is a prototype **weather data streaming and visualization platform** that automates the full pipeline from **operational NWP forecast ingestion** to **interactive, sector-specific dashboards**.  
 It demonstrates how raw model data (ECMWF IFS, MET Norway MEPS, etc.) can be streamed, transformed into STAC/Zarr assets, and visualized as actionable weather intelligence for decision-makers.
@@ -39,7 +39,6 @@ It demonstrates how raw model data (ECMWF IFS, MET Norway MEPS, etc.) can be str
 
 ---
 
-````markdown
 ## Quick Start (minimal)
 
 > **Note:** After cloning, installing the **StreamViz package** is **mandatory**.
@@ -102,10 +101,11 @@ That’s it.
 ## Running the streamer & generator
 
 ```bash
-# Streamer (orchestrates forecast downloads & STAC posting)
+# Streamer (orchestrates forecast downloads & STAC posting) - Run it on a screen session
 ./streamer.sh
 
-# Thematic generator (writes Plotly JSON into ./plot_dump)
+# Thematic generator (writes Plotly JSON into ./plot_dump) - trigger this operation manually after STAC entries are visible
+
 python thematic_generator_dashboard.py
 ```
 
@@ -113,7 +113,6 @@ python thematic_generator_dashboard.py
 
 
 
-````markdown
 ## Dashboard
 
 Once the stack is running and you have figures in `./plot_dump`, open:
