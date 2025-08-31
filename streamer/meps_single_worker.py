@@ -11,13 +11,13 @@ import json
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-'''
+
 # Get environment variables
 DATE = os.environ["DATE"]  # e.g. "2025-08-30"
 TIME = os.environ["TIME"]  # "00" | "06" | "12" | "18"
-'''
-DATE = "2025-08-31" 
-TIME = "00"
+
+#DATE = "2025-08-31" 
+#TIME = "00"
 
 logger.info(f"Processing DATE: {DATE}, TIME: {TIME}")
 
