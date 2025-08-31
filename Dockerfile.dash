@@ -1,0 +1,37 @@
+FROM python:3.11-slim
+
+# System prerequisites
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl tini && rm -rf /var/lib/apt/lists/*
+
+# Python dependencies—latest stable versions as of Aug 2025
+RUN pip install --no-cache-dir \
+    dash==3.2.0 \
+    dash-bootstrap-components==1.7.0 \
+    plotly==6.3.0 \
+    gunicorn==21.2.0 \
+    Flask-Compress==1.15 \
+    numpy
+
+WORKDIR /app
+COPY dash_app.py /app/dash_app.py
+
+# Optional Gunicorn tuning
+ENV GUNICORN_WORKERS=2 \
+    GUNICORN_THREADS=4 \
+    GUNICORN_TIMEOUT=90 \
+    PLOT_DUMP_DIR=/srv/plot_dump
+
+# Use non-root for safety
+RUN useradd -ms /bin/bash appuser
+USER appuser
+
+EXPOSE 8050
+ENTRYPOINT ["/usr/bin/tini","--"]
+CMD gunicorn -b 0.0.0.0:8050 dash_app:server \
+    --workers ${GUNICORN_WORKERS} \
+    --threads ${GUNICORN_THREADS} \
+    --timeout ${GUNICORN_TIMEOUT} \
+    --graceful-timeout 30 \
+    --max-requests 1000 \
+    --max-requests-jitter 100
