@@ -67,8 +67,8 @@ def _anchor_geo(fig: go.Figure, name: str):
     has_animation = hasattr(fig, 'frames') and fig.frames
     
     # Use your BBOX values directly
-    x_range = [5.0, 32.0]   # lon_min, lon_max
-    y_range = [47.0, 71.5]  # lat_min, lat_max
+    x_range = [0, 32.0]   # lon_min, lon_max
+    y_range = [54, 72]  # lat_min, lat_max
     
     if not has_animation:
         # Apply layout changes only to non-animated figures

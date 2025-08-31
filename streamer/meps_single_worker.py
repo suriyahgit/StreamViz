@@ -11,10 +11,13 @@ import json
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
+'''
 # Get environment variables
 DATE = os.environ["DATE"]  # e.g. "2025-08-30"
 TIME = os.environ["TIME"]  # "00" | "06" | "12" | "18"
+'''
+DATE = "2025-08-31" 
+TIME = "00"
 
 logger.info(f"Processing DATE: {DATE}, TIME: {TIME}")
 
@@ -100,20 +103,20 @@ crs = pyproj.CRS.from_cf({
 
 merged = merged.rio.set_spatial_dims(x_dim="x", y_dim="y")
 merged = merged.rio.write_crs(crs)
-merged = merged.rio.reproject("EPSG:3035")
+merged = merged.rio.reproject("EPSG:4326")
 
 # Crop to target area
 logger.info("Cropping to target area")
 store = merged.sel(
-    x=slice(3602000, 5539203.595174674),
-    y=slice(5690158.351704, 3282159.6029571723)
+    x=slice(0, 32),
+    y=slice(72, 51.5)
 )
 
 # Set attributes and prepare for STAC
 logger.info("Setting attributes and preparing data for STAC")
-store.attrs["crs"] = "EPSG:3035"
-store.attrs["proj:epsg"] = 3035
-store.attrs["spatial_ref"] = "EPSG:3035"
+store.attrs["crs"] = "EPSG:4326"
+store.attrs["proj:epsg"] = 4326
+store.attrs["spatial_ref"] = "EPSG:4326"
 store.attrs["forecast_reference_time"] = str(ds.time.values[0])
 store = store.rename({"time": "step"})
 
@@ -145,6 +148,13 @@ rs2stac = Raster2STAC(
     providers=[task_SkyFora],
     s3_upload=False,
 ).generate_zarr_stac(item_id=f"MEPS_DET_SINGLE_{ymd}T{TIME}Z")
+
+with open(f"{output_folder}/MEPS_DET_SINGLE_2_5KMS.json","r") as f:
+   stac_collection_to_post = json.load(f)
+
+stac_collection_to_post['extent']['temporal']['interval'][0][1] = None
+
+requests.delete("http://localhost:8081/collections/MEPS_DET_SINGLE_2_5KMS")
 
 # Post STAC items
 logger.info("Posting STAC items to server")
