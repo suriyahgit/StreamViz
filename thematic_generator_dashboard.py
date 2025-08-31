@@ -27,8 +27,8 @@ import pystac_client
 PLOT_DUMP_DIR = Path("./plot_dump")
 PLOT_DUMP_DIR.mkdir(parents=True, exist_ok=True)
 
-NE_COAST = "./ne/ne_50m_coastline.json"
-NE_BORD  = "./ne/ne_50m_admin_0_countries.json"
+NE_COAST = "./ne/ne_10m_coastline.geojson"
+NE_BORD  = "./ne/ne_10m_admin_0_countries.geojson"
 
 MAX_ARROWS     = 450     # per frame
 ARROW_MIN_SPD  = 2.5     # m/s threshold for drawing arrows
@@ -61,10 +61,14 @@ catalog = pystac_client.Client.open("http://localhost:8081")
 # Pressure levels
 pl_items = list(catalog.search(collections=["MEPS_DET_PRESSURE_2_5KMS"]).items())
 ds_meps_pl = xr.open_zarr(pl_items[0].assets["data"].href).isel(time=0).compute()
+ds_meps_pl = ds_meps_pl.sortby('y', ascending=True)  # Sort y in ascending order
+
 
 # Surface/single levels
 sl_items = list(catalog.search(collections=["MEPS_DET_SINGLE_2_5KMS"]).items())
 ds_meps_sfc = xr.open_zarr(sl_items[0].assets["data"].href).isel(time=0).compute()
+ds_meps_sfc = ds_meps_sfc.sortby('y', ascending=True)  # Sort y in ascending order
+
 
 # Keep only first 24 steps
 def head24(da): return da.isel(step=slice(0, min(24, da.sizes["step"])))
