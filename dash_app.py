@@ -51,8 +51,7 @@ THEME_LABELS = {
     "t2_": "Solar Energy",
     "t3_": "Insurance Risk",
     "t4_": "District Heating",
-    "t5_": "Aviation & Logistics",
-    "compare_": "Compare (Regional vs Global)",
+    "t5_": "Aviation & Logistics"
 }
 
 def theme_for(name: str) -> str:
@@ -68,7 +67,7 @@ def index_figs_by_theme(figs: Dict[str, go.Figure]) -> Dict[str, List[str]]:
         out.setdefault(theme, []).append(name)
     # deterministic order for tabs
     ordered = {}
-    for pref in ["Wind Energy","Solar Energy","Insurance Risk","District Heating","Aviation & Logistics","Compare (Regional vs Global)"]:
+    for pref in ["Wind Energy","Solar Energy","Insurance Risk","District Heating","Aviation & Logistics"]:
         if pref in out: ordered[pref] = out[pref]
     # append any "Misc" at the end
     for k,v in out.items():
@@ -134,7 +133,7 @@ def _anchor_single_panel(fig: go.Figure, name: str):
 
 def _anchor_compare(fig: go.Figure, name: str):
     # Same BBOX on both panels
-    x_range = [0.0, 32.0]
+    x_range = [0.0, 31.7]
     y_range = [54.0, 72.0]
     has_frames = bool(getattr(fig, "frames", []))
     fig.update_layout(
@@ -166,9 +165,9 @@ def _anchor_geo(fig: go.Figure, name: str):
 # Layout
 # -----------------------------------------------------------------------------
 app.layout = html.Div([
-    dcc.Interval(id="poll", interval=120000, n_intervals=0),  # every 2 min
+    dcc.Interval(id="poll", interval=600000, n_intervals=0),  # every 2 min
     html.Div([
-        html.H4("Professional Weather Intelligence", style={"margin":"8px 0 4px 0"}),
+        html.H4("SkyFora Task Dashboard", style={"margin":"8px 0 4px 0"}),
         html.Div("Choose a theme and layer", style={"fontSize":"12px","opacity":0.85}),
     ], style={"padding":"6px 10px 2px 10px"}),
     dcc.Store(id="fig-index", storage_type="memory"),

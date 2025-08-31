@@ -18,8 +18,9 @@ client = Client(source="ecmwf", beta=False)
 DATE = os.environ["DATE"]  # e.g. "2025-08-30"
 TIME = os.environ["TIME"]  # "00" | "06" | "12" | "18"
 
-#DATE = "2025-08-30"
-#TIME = "06"
+#DATE = "2025-08-31"
+#TIME = "00"
+
 STEPS = list(range(0, 46, 3))  # 0..48 by 3h
 OUTDIR = "/home/sdhinakaran/task/StreamViz/data/use"
 
@@ -62,28 +63,11 @@ if 'time' in ds.coords and 'step' in ds.coords:
 
 ds = ds.rio.write_crs("EPSG:4326")
 
-# Process each pressure level
-logger.info("Reprojecting each pressure level to EPSG:3035")
-levels = ds["isobaricInhPa"].values
-reproj_levels = []
-
-for lev in levels:
-    logger.info(f"Processing level: {lev}hPa")
-    ds_lev = ds.sel(isobaricInhPa=lev)
-    ds_lev_3035 = ds_lev.rio.reproject("EPSG:3035")
-    ds_lev_3035 = ds_lev_3035.expand_dims({"isobaricInhPa": [float(lev)]})
-    reproj_levels.append(ds_lev_3035)
-
-# Concatenate back along isobaricInhPa
-logger.info("Concatenating pressure levels")
-ds_3035 = xr.concat(reproj_levels, dim="isobaricInhPa")
-ds_3035 = ds_3035.sortby("isobaricInhPa")
-
 # Crop to target area
 logger.info("Cropping to target area")
-cropped_ds = ds_3035.sel(
-    x=slice(3602000, 5539203.595174674),
-    y=slice(5690158.351704, 3282159.6029571723)
+cropped_ds = ds.sel(
+    longitude=slice(0, 32),
+    latitude=slice(72, 51.5)
 )
 
 # Prepare data for STAC
@@ -92,9 +76,9 @@ cropped_ds = cropped_ds.expand_dims('time')
 cropped_ds = cropped_ds.to_dataarray(dim="bands")
 
 # Set attributes
-cropped_ds.attrs["crs"] = "EPSG:3035"
-cropped_ds.attrs["proj:epsg"] = 3035
-cropped_ds.attrs["spatial_ref"] = "EPSG:3035"
+cropped_ds.attrs["crs"] = "EPSG:4326"
+cropped_ds.attrs["proj:epsg"] = 4326
+cropped_ds.attrs["spatial_ref"] = "EPSG:4326"
 cropped_ds.attrs["forecast_reference_time"] = str(cropped_ds.step.values[0])
 
 # Define task metadata
@@ -120,6 +104,7 @@ rs2stac = Raster2STAC(
     providers=[task_SkyFora],
     s3_upload=False,
 ).generate_zarr_stac(item_id=f"IFS_DET_PRESSURE_{DATE}_{TIME}z")
+
 
 # Post STAC items
 logger.info("Posting STAC items to server")

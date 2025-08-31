@@ -24,8 +24,8 @@ task_SkyFora = {
 DATE = os.environ["DATE"]  # e.g. "2025-08-30"
 TIME = os.environ["TIME"]  # "00" | "06" | "12" | "18"
 
-#DATE = "2025-08-30"
-#TIME = "06"
+#DATE = "2025-08-31"
+#TIME = "00"
 
 STEPS = list(range(0, 46, 3))  # 0..48 by 3h
 OUTDIR = "/home/sdhinakaran/task/StreamViz/data/use"
@@ -83,15 +83,11 @@ if 'time' in ds.coords and 'step' in ds.coords:
     reference_time = ds.time.values
     ds['step'] = reference_time + ds.step
 
-# Reproject and crop
-logger.info("Reprojecting to EPSG:3035")
-ds = ds.rio.write_crs("EPSG:4326")
-ds_reproj = ds.rio.reproject("EPSG:3035")
 
 logger.info("Cropping to target area")
-ds_cropped = ds_reproj.sel(
-    x=slice(3602000, 5539203.595174674),
-    y=slice(5690158.351704, 3282159.6029571723)
+ds_cropped = ds.sel(
+    longitude=slice(0, 32),
+    latitude=slice(72, 51.5)
 )
 
 # Prepare data for STAC
@@ -103,9 +99,9 @@ ds_cropped = ds_cropped.expand_dims('time')
 ds_cropped = ds_cropped.to_dataarray(dim="bands")
 
 # Set attributes
-ds_cropped.attrs["crs"] = "EPSG:3035"
-ds_cropped.attrs["proj:epsg"] = 3035
-ds_cropped.attrs["spatial_ref"] = "EPSG:3035"
+ds_cropped.attrs["crs"] = "EPSG:4326"
+ds_cropped.attrs["proj:epsg"] = 4326
+ds_cropped.attrs["spatial_ref"] = "EPSG:4326"
 ds_cropped.attrs["forecast_reference_time"] = str(ds_cropped.step.values[0])
 
 # Generate ZARR STAC
@@ -124,6 +120,7 @@ rs2stac = Raster2STAC(
     providers=[task_SkyFora],
     s3_upload=False,
 ).generate_zarr_stac(item_id=f"IFS_DET_SINGLE_{DATE}_{TIME}z")
+
 
 # Post STAC items
 logger.info("Posting STAC items to server")
